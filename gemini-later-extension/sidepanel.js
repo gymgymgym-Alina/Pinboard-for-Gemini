@@ -86,3 +86,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   });
+
+// 监听 Storage 的变化。如果是 content_script 在后台消耗了问题，这里会自动触发刷新
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local' && changes.queuedQuestions) {
+      renderQueue(changes.queuedQuestions.newValue);
+    }
+  });
+  console.log("侧边栏 JS 文件已经成功加载！");
