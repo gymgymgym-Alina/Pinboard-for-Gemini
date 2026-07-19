@@ -1,0 +1,27 @@
+{
+    "manifest_version": 3,
+    "name": "Gemini Later Queue",
+    "version": "1.0",
+    "description": "Displays a sidebar on the right side of Gemini to store questions for later.",
+    "permissions": [
+      "sidePanel"
+    ],
+    "host_permissions": [
+      "https://gemini.google.com/*"
+    ],
+    "side_panel": {
+      "default_path": "sidepanel.html"
+    },
+    "background": {
+      "service_worker": "background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": ["https://gemini.google.com/*"],
+        "js": ["content_script.js"]
+      }
+    ],
+    "action": {
+      "default_title": "Open Later Queue Sidebar"
+    }
+  }

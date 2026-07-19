@@ -1,0 +1,1 @@
+console.log("🚀 Extension successfully injected into the Gemini page!");
