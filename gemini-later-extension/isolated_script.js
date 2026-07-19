@@ -3,30 +3,26 @@ console.log("[Gemini Later] isolated_script.js 已加载");
 let isGenerating = false;
 let isProcessingQueue = false;
 
-// 1. 监听 AI 回复状态变化
-const observer = new MutationObserver((mutations) => {
-  for (const mutation of mutations) {
-    if (mutation.type === 'attributes' && mutation.attributeName === 'data-mat-icon-name') {
-      const iconName = mutation.target.getAttribute('data-mat-icon-name');
-      
-      if (iconName === 'stop') {
-        if (!isGenerating) {
-          console.log("[Gemini Later] 检测到 AI 开始生成 (状态: stop)");
-          isGenerating = true;
-        }
-      } else if (iconName === 'mic' || iconName === 'arrow_upward') {
-        if (isGenerating) {
-          console.log(`[Gemini Later] 检测到生成结束 (状态: ${iconName})`);
-          isGenerating = false;
-          checkAndProcessQueue();
-        }
-      }
-    }
+// 1. 监听 AI 回复状态变化 (升级为状态快照查询法)
+const observer = new MutationObserver(() => {
+  // 不再去解析具体的 mutation detail，而是直接看当前 DOM 里的真实状态
+  const stopIcon = document.querySelector('mat-icon[data-mat-icon-name="stop"]');
+  const micIcon = document.querySelector('mat-icon[data-mat-icon-name="mic"]');
+  const arrowIcon = document.querySelector('mat-icon[data-mat-icon-name="arrow_upward"]');
+
+  if (stopIcon && !isGenerating) {
+    console.log("[Gemini Later] 检测到 AI 开始生成 (状态: stop)");
+    isGenerating = true;
+  } else if (!stopIcon && (micIcon || arrowIcon) && isGenerating) {
+    console.log("[Gemini Later] 检测到生成结束 (状态恢复)");
+    isGenerating = false;
+    checkAndProcessQueue();
   }
 });
 
-// 监听整个 body，过滤 mat-icon 的变化
+// 监听配置增加 childList: true，捕捉节点的销毁和重建
 observer.observe(document.body, {
+  childList: true,
   subtree: true,
   attributes: true,
   attributeFilter: ['data-mat-icon-name']
