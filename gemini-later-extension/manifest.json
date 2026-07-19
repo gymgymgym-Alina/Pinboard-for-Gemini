@@ -4,7 +4,8 @@
     "version": "1.0",
     "description": "Displays a sidebar on the right side of Gemini to store questions for later.",
     "permissions": [
-      "sidePanel"
+      "sidePanel",
+      "storage"
     ],
     "host_permissions": [
       "https://gemini.google.com/*"
