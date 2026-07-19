@@ -17,11 +17,17 @@
       "service_worker": "background.js"
     },
     "content_scripts": [
-      {
-        "matches": ["https://gemini.google.com/*"],
-        "js": ["content_script.js"],
-        "run_at": "document_end"
-      }
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["isolated_script.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["main_world_script.js"],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    }
     ],
     "action": {
       "default_title": "Open Later Queue Sidebar"
