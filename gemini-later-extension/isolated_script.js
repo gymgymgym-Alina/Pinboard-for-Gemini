@@ -46,3 +46,58 @@ document.addEventListener('gemini-later-status', (e) => {
     console.error(`[Gemini Later] MAIN World 报告发送失败! ID: ${id}, 原因: ${reason}`);
   }
 });
+// ==========================================
+// 👇 新增: 划词悬浮按钮逻辑
+// ==========================================
+let floatingBtn = null;
+
+document.addEventListener('mouseup', (e) => {
+  // 每次鼠标抬起时，先清理旧的按钮
+  if (floatingBtn) {
+    floatingBtn.remove();
+    floatingBtn = null;
+  }
+
+  // 获取用户选中的文本
+  const selection = window.getSelection();
+  const selectedText = selection.toString().trim();
+
+  // 如果有选中文本，且不在我们自己的输入框里
+  if (selectedText.length > 0) {
+    floatingBtn = document.createElement('button');
+    floatingBtn.innerHTML = '✨ 生成追问建议';
+    // 直接用内联样式避免额外引入 CSS
+    floatingBtn.style.cssText = `
+      position: absolute;
+      top: ${e.pageY + 10}px;
+      left: ${e.pageX + 10}px;
+      z-index: 10000;
+      background: #f1f3f4;
+      border: 1px solid #dadce0;
+      border-radius: 16px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      color: #1a73e8;
+      font-weight: 500;
+    `;
+    
+    document.body.appendChild(floatingBtn);
+
+    // 点击按钮，发送消息给侧边栏
+    floatingBtn.addEventListener('click', (btnEvent) => {
+      btnEvent.stopPropagation(); // 阻止冒泡
+      chrome.runtime.sendMessage({ 
+        action: 'trigger_ai_suggestions', 
+        text: selectedText 
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          alert("请先打开 Gemini Later Queue 侧边栏！");
+        }
+      });
+      floatingBtn.remove();
+      window.getSelection().removeAllRanges(); // 取消文本选中状态
+    });
+  }
+});
