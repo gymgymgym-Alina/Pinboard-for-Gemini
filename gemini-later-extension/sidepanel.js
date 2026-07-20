@@ -61,14 +61,68 @@ document.addEventListener('DOMContentLoaded', () => {
         textSpan.className = 'question-text';
         textSpan.textContent = q.text;
   
+        // ==========================================
+        // 👇 新增: Ask Now 手动发送按钮逻辑
+        // ==========================================
+        const askBtn = document.createElement('button');
+        askBtn.className = 'ask-btn';
+        askBtn.textContent = 'Ask Now';
+  
+        askBtn.addEventListener('click', async () => {
+          // 查找当前活动的 Gemini 页面
+          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          
+          if (!tab) {
+            alert("未找到活动的页面");
+            return;
+          }
+  
+          // 按钮进入防抖等待状态
+          askBtn.disabled = true;
+          askBtn.textContent = 'Checking...';
+  
+          // 发送消息给 isolated_script.js
+          chrome.tabs.sendMessage(tab.id, { 
+            action: 'ask_now', 
+            id: q.id, 
+            text: q.text 
+          }, (response) => {
+            
+            // 如果连接失败（比如网页刚刷新，Content Script 还没注入）
+            if (chrome.runtime.lastError) {
+              alert("请刷新一下 Gemini 网页，以激活插件功能！");
+              askBtn.disabled = false;
+              askBtn.textContent = 'Ask Now';
+              return;
+            }
+  
+            // 根据 Content Script 的检测结果给出反馈
+            if (response && response.status === 'busy') {
+              alert("AI 正在回复中，请稍候！");
+              askBtn.disabled = false; // 恢复按钮，让用户等下再点
+              askBtn.textContent = 'Ask Now';
+            } else if (response && response.status === 'sending') {
+              askBtn.textContent = 'Sending...'; 
+              // 这里不需要恢复 disabled，因为稍后发送成功后，
+              // 列表会被重新渲染，这个旧按钮就自动消失了
+            }
+          });
+        });
+        // ==========================================
+        // 👆 Ask Now 逻辑结束
+        // ==========================================
+  
         const delBtn = document.createElement('button');
         delBtn.className = 'delete-btn';
         delBtn.textContent = 'Delete';
         // 绑定删除事件
         delBtn.addEventListener('click', () => deleteQuestion(q.id));
   
+        // 按顺序把元素塞进列表项里
         itemDiv.appendChild(textSpan);
+        itemDiv.appendChild(askBtn); // 将 Ask Now 按钮加在文本和删除键中间
         itemDiv.appendChild(delBtn);
+        
         listEl.appendChild(itemDiv);
       });
     }
@@ -85,12 +139,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
     }
+  
+    // 【修复】：把 storage 变动监听放到 DOMContentLoaded 内部
+    // 这样当 Content Script 自动移除已发送的问题时，侧边栏才能正确找到 renderQueue 并刷新
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && changes.queuedQuestions) {
+        renderQueue(changes.queuedQuestions.newValue);
+      }
+    });
+  
   });
-
-// 监听 Storage 的变化。如果是 content_script 在后台消耗了问题，这里会自动触发刷新
-chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'local' && changes.queuedQuestions) {
-      renderQueue(changes.queuedQuestions.newValue);
-    }
-  });
+  
   console.log("侧边栏 JS 文件已经成功加载！");
