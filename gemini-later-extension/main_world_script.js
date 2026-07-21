@@ -5,25 +5,26 @@ document.addEventListener('gemini-later-fill', async (e) => {
   console.log(`[Gemini Later MAIN] 收到写入指令, 问题 ID: ${id}, 正在写入...`);
 
   try {
-    const editor = document.querySelector('.ql-editor');
+    // 1. 兼容多种可能出现的 Gemini 输入框结构
+    const editor = document.querySelector('.ql-editor') || 
+                   document.querySelector('rich-textarea div[contenteditable="true"]') ||
+                   document.querySelector('p[data-placeholder]')?.parentElement ||
+                   document.querySelector('[contenteditable="true"]:not([style*="display: none"])');
+
     if (!editor) {
-      throw new Error("未找到 .ql-editor 元素");
+      throw new Error("未找到任何支持 contenteditable 的输入框元素");
     }
 
-    // 1. 获取焦点
+    // 2. 获取焦点并写入
     editor.focus();
 
-    // 2. 清空并写入内容 (绕过 TrustedHTML 限制)
-    // 模拟用户按下 Ctrl+A (全选) 
+    // 清空并写入内容 (绕过 TrustedHTML 限制)
     document.execCommand('selectAll', false, null);
-    
-    // 模拟用户输入，这会自动覆盖掉刚刚全选的内容，实现“清空+写入”
     const insertSuccess = document.execCommand('insertText', false, text);
     
-    // 兜底方案：如果 execCommand 碰巧失效
+    // 兜底方案
     if (!insertSuccess) {
       console.log("[Gemini Later MAIN] execCommand 失败，尝试基础 fallback...");
-      // 使用 textContent 是安全的，不会触发 TrustedHTML 拦截
       editor.textContent = text; 
       editor.dispatchEvent(new InputEvent('input', {
         bubbles: true,
@@ -38,19 +39,22 @@ document.addEventListener('gemini-later-fill', async (e) => {
     // 3. 等待 Angular/Lit 框架更新状态
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // 4. 查找此时的发送按钮 (图标应该已经变成了 arrow_upward)
-    const sendIcon = document.querySelector('mat-icon[data-mat-icon-name="arrow_upward"]');
-    if (!sendIcon) {
-      throw new Error("未找到 arrow_upward 发送按钮，可能是文本未正确识别");
+    // 4. 兼容查找发送按钮 (避开麦克风)
+    let sendBtn = document.querySelector('button[aria-label*="Send"]') || 
+                  document.querySelector('button[aria-label*="发送"]');
+    
+    if (!sendBtn) {
+        const icon = document.querySelector('mat-icon[data-mat-icon-name="send"]') || 
+                     document.querySelector('mat-icon[data-mat-icon-name="arrow_upward"]');
+        if (icon) sendBtn = icon.closest('button');
     }
 
-    const sendButton = sendIcon.closest('button');
-    if (!sendButton) {
-      throw new Error("找到了 icon，但没有找到 button 元素");
+    if (!sendBtn) {
+      throw new Error("未找到发送按钮，可能是文本未正确识别导致按钮未激活");
     }
 
     // 5. 触发发送
-    sendButton.click();
+    sendBtn.click();
     console.log("[Gemini Later MAIN] 按钮点击成功，问题已发送！");
 
     // 6. 回传成功状态给 ISOLATED world
